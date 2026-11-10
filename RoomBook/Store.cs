@@ -53,6 +53,6 @@ public class Store
         return !Bookings.Any(b =>
             b.RoomId == roomId &&
             !b.Cancelled &&
-            b.Start <= start && start < b.End);
+            b.Start < end && start < b.End);
     }
 }

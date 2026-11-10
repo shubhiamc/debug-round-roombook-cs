@@ -30,7 +30,7 @@ public class AuthService(Store store)
     {
         var email = (req.Email ?? "").Trim().ToLowerInvariant();
         var user = store.Users.FirstOrDefault(u => u.Email == email);
-        if (user is null || user.PasswordHash != Hash(req.Password ?? ""))
+        if (user is null || !Verify(req.Password ?? "", user.PasswordHash))
             return new(401, new { error = "invalid email or password" });
 
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
@@ -40,7 +40,7 @@ public class AuthService(Store store)
 
     public Result Logout(string token)
     {
-        store.Tokens.Remove(token.ToLowerInvariant());
+        store.Tokens.Remove(token);
         return new(204);
     }
 
@@ -58,6 +58,17 @@ public class AuthService(Store store)
         return (store.Users.FirstOrDefault(u => u.Id == userId), token);
     }
 
-    private static string Hash(string password) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(password)));
+    // Stored as "<salt>:<hash>" (hex) so equal passwords never produce equal hashes.
+    private static string Hash(string password, byte[]? salt = null)
+    {
+        salt ??= RandomNumberGenerator.GetBytes(16);
+        var hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, 50_000, HashAlgorithmName.SHA256, 32);
+        return $"{Convert.ToHexString(salt)}:{Convert.ToHexString(hash)}";
+    }
+
+    private static bool Verify(string password, string stored)
+    {
+        var salt = Convert.FromHexString(stored.Split(':')[0]);
+        return Hash(password, salt) == stored;
+    }
 }

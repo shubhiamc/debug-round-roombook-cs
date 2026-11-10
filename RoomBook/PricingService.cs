@@ -8,7 +8,7 @@ public class PricingService(Store store)
     public const int PeakStartHour = 9;             // peak = 09:00 up to (not including) 12:00
     public const int PeakEndHour = 12;
 
-    public static bool IsPeak(DateTime t) => t.Hour >= PeakStartHour && t.Hour <= PeakEndHour;
+    public static bool IsPeak(DateTime t) => t.Hour >= PeakStartHour && t.Hour < PeakEndHour;
 
     /// <summary>Price for booking the room from start to end, priced per half hour.</summary>
     public decimal Quote(string userId, Room room, DateTime start, DateTime end)

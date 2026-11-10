@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace RoomBook;
 
 public record CreateBookingRequest(int RoomId, DateTime Start, DateTime End, int Attendees);
@@ -13,7 +15,7 @@ public class BookingService(Store store, PricingService pricing)
 
         var room = store.Rooms.FirstOrDefault(r => r.Id == req.RoomId);
         if (room is null)
-            return new(400, new { error = "room not found" });
+            return new(404, new { error = "room not found" });
 
         if (req.Attendees < 1 || req.Attendees > room.Capacity)
             return new(400, new { error = $"attendees must be between 1 and {room.Capacity}" });
@@ -40,6 +42,8 @@ public class BookingService(Store store, PricingService pricing)
         var booking = store.Bookings.FirstOrDefault(b => b.Id == id);
         if (booking is null)
             return new(404, new { error = "booking not found" });
+        if (booking.UserId != userId)
+            return new(403, new { error = "not your booking" });
         return new(200, booking);
     }
 
@@ -48,6 +52,8 @@ public class BookingService(Store store, PricingService pricing)
         var booking = store.Bookings.FirstOrDefault(b => b.Id == id);
         if (booking is null)
             return new(404, new { error = "booking not found" });
+        if (booking.UserId != userId)
+            return new(403, new { error = "not your booking" });
         if (booking.Cancelled)
             return new(409, new { error = "booking is already cancelled" });
 
@@ -62,7 +68,8 @@ public class BookingService(Store store, PricingService pricing)
 
         if (!string.IsNullOrEmpty(date))
         {
-            var day = DateOnly.Parse(date);
+            if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day))
+                return new(400, new { error = "date must be formatted yyyy-MM-dd" });
             query = query.Where(b => DateOnly.FromDateTime(b.Start) == day);
         }
 

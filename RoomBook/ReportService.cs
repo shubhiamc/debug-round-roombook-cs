@@ -7,22 +7,16 @@ public record UsageReport(string Month, int Bookings, double Hours, decimal Tota
 
 public class ReportService(Store store)
 {
-    private readonly Dictionary<string, UsageReport> _cache = new();
-
     /// <summary>Usage summary for one user and one month (yyyy-MM), based on booking start time.</summary>
     public Result Monthly(string userId, string? month)
     {
         if (!DateTime.TryParseExact(month, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var from))
             return new(400, new { error = "month must be formatted yyyy-MM" });
 
-        var cacheKey = $"{userId}:{month}";
-        if (_cache.TryGetValue(cacheKey, out var cached))
-            return new(200, cached);
-
-        var to = new DateTime(from.Year, from.Month, DateTime.DaysInMonth(from.Year, from.Month));
+        var to = from.AddMonths(1);
 
         var mine = store.Bookings
-            .Where(b => b.UserId == userId && !b.Cancelled && b.Start >= from && b.Start <= to)
+            .Where(b => b.UserId == userId && !b.Cancelled && b.Start >= from && b.Start < to)
             .ToList();
 
         var byRoom = mine
@@ -42,7 +36,6 @@ public class ReportService(Store store)
             mine.Sum(b => b.Price),
             byRoom);
 
-        _cache[cacheKey] = report;
         return new(200, report);
     }
 }
